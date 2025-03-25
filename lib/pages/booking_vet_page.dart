@@ -2,20 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:vetconnect/pages/confirm_and_pay_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 enum TimePickerMode { h12, h24 }
 
 class BookingVetPage extends StatefulWidget {
-  const BookingVetPage({super.key});
+  final String vetId;
+  final Map<String, dynamic> vetData;
 
+  const BookingVetPage({
+    Key? key,
+    required this.vetId,
+    required this.vetData,
+  }) : super(key: key);
   
   @override
-  State<StatefulWidget> createState() {
-    return _BookingVetPageState();
-  }
+  State<BookingVetPage> createState() => _BookingVetPageState();
 }
 
 class _BookingVetPageState extends State<BookingVetPage> {
-  
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   double? _deviceHeight;
   double? _deviceWidth;
   bool _isInPerson = true;
@@ -29,6 +37,10 @@ class _BookingVetPageState extends State<BookingVetPage> {
   String vetName = ''; 
   String appointmentTime = '';
   double consultationFee = 0.0;
+  TimeOfDay? _selectedTime;
+  String? _selectedAnimal;
+  String? _selectedType;
+  final TextEditingController _notesController = TextEditingController();
 
   final List<Map<String, dynamic>> _previousAppointments = [
   {
@@ -54,8 +66,20 @@ class _BookingVetPageState extends State<BookingVetPage> {
   },
 ];
 
+  final List<String> _appointmentTypes = [
+    'General Checkup',
+    'Vaccination',
+    'Surgery',
+    'Emergency',
+    'Follow-up',
+  ];
 
   @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
   @override
 Widget build(BuildContext context) {
   _deviceHeight = MediaQuery.of(context).size.height;
@@ -170,8 +194,6 @@ Widget build(BuildContext context) {
   );
 }
 
-
-// Modified reservation form
 Widget _reservationForm() {
   return Card(
     elevation: 6,
@@ -209,19 +231,6 @@ Widget _reservationForm() {
                 ),
                 SizedBox(width: 5),
                 Icon(Icons.arrow_drop_down, color: Colors.blue),
-                ],
-                ),
-              ),
-              ElevatedButton(
-  onPressed: () => _selectTime(context),
-  child: Row(
-    children: [
-      Text(
-        DateFormat('jm').format(_selectedDate!),
-        style: TextStyle(fontSize: 16),
-      ),
-      SizedBox(width: 5),
-      Icon(Icons.access_time, color: Colors.blue),
     ],
   ),
 ),
@@ -296,7 +305,6 @@ Widget _reservationForm() {
   );
 }
 
-// Update the vet profile layout
 Widget _vetProfile() {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,22 +334,6 @@ Widget _vetProfile() {
         ),
       ),
     ],
-  );
-}
-
-  Widget _topBackground() {
-
-    return Container(
-      decoration: BoxDecoration(
-      color: Colors.blue,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [          
-          _vetProfileIcon(),
-          _vetProfile(),                    
-        ],
-      ),
     );
   }
 
@@ -384,144 +376,6 @@ Widget _vetProfile() {
     });
   }
 }
-
-//   Widget _vetProfile(){
-//     return ConstrainedBox(
-//       constraints: BoxConstraints(maxWidth: 200),
-//       child: RichText(
-//         text: const TextSpan(
-//           style: TextStyle(
-//             fontFamily: 'Inter',          
-//           ),
-//           children: [
-//             TextSpan(
-//               text: 'Dr. Lila Montgomery',
-//               style: TextStyle(
-//                 fontSize: 16,            
-//               ),
-//             ),          
-//             TextSpan(
-//               text: '\nSpecialist in Cow Health & Orthopedics | \n Kiambu Ke',
-//               style: TextStyle(
-//                 fontSize: 13,
-//                 color: Colors.grey,
-//               ),
-//             ),
-//             TextSpan(
-//               text: '\n10 years of experience DVM, MS Qualifications',
-//               style: TextStyle(
-//                 fontSize: 13,
-//                 color: Colors.teal,
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-
-//   Widget _reservationForm() {
-//  return Card(
-//       elevation: 4,
-//       margin: EdgeInsets.all(16),
-//       shape: RoundedRectangleBorder(
-//         borderRadius: BorderRadius.circular(16),
-//       ),
-//       child: Padding(
-//         padding: EdgeInsets.all(16),
-//         child: Column(
-//           children: [
-//             // Form Type Selector
-//             Row(
-//               children: [
-//                 _buildFormTypeButton('In-Person Visit', true),
-//                 _buildFormTypeButton('Video Call Consultation', false),
-//               ],
-//             ),
-//             SizedBox(height: 20),
-
-//             // Date and Time Selection
-//             Row(
-//               children: [
-//                 Icon(Icons.calendar_today, color: Colors.blue),
-//                 SizedBox(width: 10),
-//                 TextButton(
-//                   onPressed: () => _selectDateTime(context),
-//                   child: Text(
-//                     '${DateFormat('EEE, d MMM y HH:mm').format(_selectedDate!)}, ${_formatTime()}',
-//                     style: TextStyle(fontSize: 16),                    
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             SizedBox(height: 20),
-
-//             // Animal Details
-//             TextField(
-//               decoration: InputDecoration(
-//                 labelText: 'Animal Type',
-//                 border: OutlineInputBorder(),
-//               ),
-//               onChanged: (value) => setState(() => _animalType = value),
-//             ),
-//             SizedBox(height: 10),
-//             TextField(
-//               decoration: InputDecoration(
-//                 labelText: 'Gender',
-//                 border: OutlineInputBorder(),
-//               ),
-//               onChanged: (value) => setState(() => _gender = value),
-//             ),
-//             SizedBox(height: 10),
-//             TextField(
-//               decoration: InputDecoration(
-//                 labelText: 'Symptoms',
-//                 border: OutlineInputBorder(),
-//               ),
-//               maxLines: 3,
-//               onChanged: (value) => setState(() => _symptoms = value),
-//             ),
-
-//             // Location Input (for In-Person Visit)
-//             if (_isInPerson)
-//               TextField(
-//                 decoration: InputDecoration(
-//                   labelText: 'Meeting Location',
-//                   border: OutlineInputBorder(),
-//                 ),
-//                 onChanged: (value) => setState(() => _location = value),
-//               ),
-
-//             SizedBox(height: 20),
-
-//             // Confirm Appointment Button
-//             SizedBox(
-//               width: double.infinity,
-//               child: ElevatedButton(
-//                 style: ElevatedButton.styleFrom(
-//                   backgroundColor: Colors.teal,
-//                   padding: EdgeInsets.symmetric(vertical: 16),
-//                   shape: RoundedRectangleBorder(
-//                     borderRadius: BorderRadius.circular(12),
-//                   ),
-//                 ),
-//                 onPressed: () => _confirmAppointment(),
-//                 child: Text(
-//                   'Confirm Appointment',
-//                   style: TextStyle(
-//                     fontSize: 18,
-//                     fontWeight: FontWeight.bold,
-//                     color: Colors.white,
-//                   ),
-//                 ),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-
-//   }
 
    Widget _buildFormTypeButton(String text, bool isInPerson) {
   return Expanded(
@@ -597,8 +451,6 @@ Widget _vetProfile() {
       });
    }
   }  
-
-
   }
 
   void _confirmAppointment() {
@@ -636,8 +488,6 @@ Widget _vetProfile() {
     // Handle the error appropriately, maybe show an error message to the user
   }
 }
-  
-
   
 Widget _previousAppointmentsSection() {
   return Padding(

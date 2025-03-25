@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
+import 'dart:developer' as developer;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class RegisterPage extends StatefulWidget{
-
+class RegisterPage extends StatefulWidget {
   @override
   State<StatefulWidget> createState() {
     return _RegisterPageState();
@@ -11,13 +14,129 @@ class RegisterPage extends StatefulWidget{
 
 class _RegisterPageState extends State<RegisterPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _passwordController = TextEditingController();
+  final Map<String, FocusNode> _focusNodes = {};
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  bool _isLoading = false;
   
   String? _fullName;
   String? _phoneNumber;
   String? _email;
   String? _password;
+  String? _confirmPassword;
   String? _userType;
   bool _agreedToTerms = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize focus nodes for each text field without custom key event handling
+    ['Full Name', 'Phone Number', 'Email', 'Password', 'Confirm Password'].forEach((field) {
+      _focusNodes[field] = FocusNode();
+    });
+  }
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    // Dispose all focus nodes
+    _focusNodes.values.forEach((node) => node.dispose());
+    super.dispose();
+  }
+
+  Future<void> _handleRegistration() async {
+    if (!mounted) return;  // Add mounted check
+    
+    developer.log('Starting registration process...', name: 'Registration');
+    
+    if (!_formKey.currentState!.validate()) {
+      developer.log('Form validation failed', name: 'Registration');
+      return;
+    }
+    
+    if (!_agreedToTerms) {
+      if (!mounted) return;
+      developer.log('Terms not agreed to', name: 'Registration');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please agree to the terms and conditions')),
+      );
+      return;
+    }
+
+    _formKey.currentState!.save();
+    
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Create authentication user
+      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: _email!,
+        password: _password!,
+      );
+
+      final User? user = userCredential.user;
+      
+      if (user != null) {
+        // Store all users in the 'users' collection
+        await _firestore.collection('users').doc(user.uid).set({
+          'fullName': _fullName,
+          'phoneNumber': _phoneNumber,
+          'email': _email,
+          'userType': _userType,
+          'createdAt': FieldValue.serverTimestamp(),
+          'isActive': true,
+          'lastLogin': FieldValue.serverTimestamp(),
+          'uid': user.uid,  // Add UID for easier querying
+        });
+
+        developer.log('User registered successfully in users collection with type: $_userType', name: 'Registration');
+        
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Registration successful!')),
+        );
+        
+        // Navigate to appropriate page based on user type
+        if (!mounted) return;
+        if (_userType == 'Veterinarian') {
+          Navigator.pushReplacementNamed(context, '/vet_home');
+        } else {
+          Navigator.pushReplacementNamed(context, '/farmer_home');
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Registration failed';
+      
+      if (e.code == 'weak-password') {
+        errorMessage = 'The password provided is too weak';
+      } else if (e.code == 'email-already-in-use') {
+        errorMessage = 'An account already exists for this email';
+      }
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+      
+      developer.log('Registration error: ${e.code}', name: 'Registration');
+    } catch (e) {
+      developer.log('Unexpected error during registration: $e', name: 'Registration');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An unexpected error occurred')),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,14 +229,23 @@ class _RegisterPageState extends State<RegisterPage> {
               obscureText: true,
               onSaved: (value) => _password = value,
               validator: (value) => value!.length < 6 ? 'Password must be at least 6 characters' : null,
+              controller: _passwordController,
             ),
             SizedBox(height: 20),
             _buildTextField(
               labelText: 'Confirm Password',
               icon: Icons.lock,
               obscureText: true,
-              onSaved: (_) {},
-              validator: (value) => value != _password ? 'Passwords do not match' : null,
+              onSaved: (value) => _confirmPassword = value,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please confirm your password';
+                }
+                if (value != _passwordController.text) {
+                  return 'Passwords do not match';
+                }
+                return null;
+              },
             ),
             SizedBox(height: 20),
             Container(
@@ -175,27 +303,24 @@ class _RegisterPageState extends State<RegisterPage> {
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate() && _agreedToTerms) {
-                    _formKey.currentState!.save();
-                    // Handle form submission
-                  }
-                },
+                onPressed: _isLoading ? null : _handleRegistration,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: Text(
-                  'Create Account',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'Inter',
-                  ),
-                ),
+                child: _isLoading
+                    ? CircularProgressIndicator(color: Colors.white)
+                    : Text(
+                        'Create Account',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
               ),
             ),
             SizedBox(height: 20),
@@ -240,12 +365,15 @@ class _RegisterPageState extends State<RegisterPage> {
     bool obscureText = false,
     required Function(String?) onSaved,
     required String? Function(String?) validator,
+    TextEditingController? controller,
   }) {
     return Container(
       width: double.infinity,
       child: TextFormField(
+        controller: controller,
         keyboardType: keyboardType,
         obscureText: obscureText,
+        focusNode: _focusNodes[labelText],
         decoration: InputDecoration(
           labelText: labelText,
           prefixIcon: Icon(icon, color: Colors.black),

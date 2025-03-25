@@ -34,14 +34,18 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-class VetProfile extends StatefulWidget{
-  const VetProfile({super.key});
+class VetProfile extends StatefulWidget {
+  final String vetId;
+  final Map<String, dynamic> vetData;
 
+  const VetProfile({
+    super.key,
+    required this.vetId,
+    required this.vetData,
+  });
 
   @override
-  State<StatefulWidget> createState() {
-    return _VetProfileState();
-  }
+  State<VetProfile> createState() => _VetProfileState();
 }
 
 class _VetProfileState extends State<VetProfile> {
@@ -145,36 +149,44 @@ class _VetProfileState extends State<VetProfile> {
   }
 
   Widget _avatarProfile(){
-    return const Center(
+    return Center(
       child: CircleAvatar(
-          radius: 50,
-          backgroundImage: AssetImage('assets/images/vet1.png'),
+        radius: 50,
+        backgroundImage: NetworkImage(
+          widget.vetData['profileImage'] ?? 'https://ui-avatars.com/api/?name=${widget.vetData['fullName'] ?? 'Vet'}&background=random',
         ),
+        onBackgroundImageError: (exception, stackTrace) {
+          print('Error loading profile image: $exception');
+        },
+        child: widget.vetData['profileImage'] == null
+            ? Icon(Icons.person, size: 50, color: Colors.grey[600])
+            : null,
+      ),
     );    
   }
 
   Widget _nameProfile(){
     return RichText(
-      text: const TextSpan(
+      text: TextSpan(
         style: TextStyle(
           fontFamily: 'Inter',          
         ),
         children: [
           TextSpan(
-            text: 'Dr. Lila Montgomery',
+            text: 'Dr. ${widget.vetData['fullName'] ?? 'Lila Montgomery'}',
             style: TextStyle(
               fontSize: 22,            
             ),
           ),          
           TextSpan(
-            text: '\nSpecialist in Cow Health & Orthopedics | \n Kiambu Ke',
+            text: '\nSpecialist in ${widget.vetData['specialization'] ?? 'Cow Health & Orthopedics'} | \n${widget.vetData['region'] ?? 'Kiambu Ke'}',
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey,
             ),
           ),
           TextSpan(
-            text: '\n10 years of experience DVM, MS Qualifications',
+            text: '\n${widget.vetData['experience'] ?? '10'} years of experience ${widget.vetData['qualifications'] ?? 'DVM, MS Qualifications'}',
             style: TextStyle(
               fontSize: 16,
               color: Colors.teal,
@@ -374,9 +386,14 @@ class _VetProfileState extends State<VetProfile> {
     return SizedBox(
       width: _deviceWidth! * 0.35,
       child: ElevatedButton(
-        onPressed: (){
+        onPressed: () {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => BookingVetPage()),
+            MaterialPageRoute(
+              builder: (context) => BookingVetPage(
+                vetId: widget.vetId,
+                vetData: widget.vetData,
+              ),
+            ),
           );
         },
         style: ElevatedButton.styleFrom(

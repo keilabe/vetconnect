@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:vetconnect/firebase_options.dart';
 import 'package:vetconnect/pages/booking_vet_page.dart';
 import 'package:vetconnect/pages/confirm_and_pay_page.dart';
@@ -13,6 +15,9 @@ import 'package:vetconnect/pages/splash_screen3.dart';
 import 'package:vetconnect/pages/splash_navigator.dart';
 import 'package:vetconnect/pages/vet_profile.dart';
 import 'package:vetconnect/services/user_service.dart';
+import 'pages/farmer_home_page.dart';
+import 'pages/vet_home_page.dart';
+import 'package:vetconnect/widgets/auth_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,42 +27,115 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   
-  // Check if user is first time or already logged in
-  bool isFirstTime = await UserService.isFirstTimeUser();
-  bool isLoggedIn = await UserService.isUserLoggedIn();
-  
-  String initialRoute = isFirstTime ? '/splash' : (isLoggedIn ? '/homepage' : '/login');
-  
-  runApp(MainApp(initialRoute: initialRoute));
+  runApp(MyApp());
 }
 
-class MainApp extends StatelessWidget {
-  final String initialRoute;
-  
-  const MainApp({super.key, required this.initialRoute});
-
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'VetConnect',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        fontFamily: 'Architect',
+        primarySwatch: Colors.teal,
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          iconTheme: IconThemeData(color: Colors.black),
+          titleTextStyle: TextStyle(
+            color: Colors.black,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
-      initialRoute: initialRoute,
+      home: AuthWrapper(),
       routes: {
-        '/splash': (context) => const SplashNavigator(),
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
         '/homepage': (context) => HomePage(),
-        '/vetprofile': (context) => VetProfile(),        
-        '/bookvet': (context) => BookingVetPage(),
-        '/confirm&pay': (context) => ConfirmAndPayPage(vetName: 'Dr. Lila Montgomery', appointmentTime: DateTime.now(), consultationFee: 50.0),
+        '/farmer-home': (context) => FarmerHomePage(),
+        '/vet-home': (context) => VetHomePage(),
+        '/confirm&pay': (context) => ConfirmAndPayPage(
+          vetName: 'Dr. Lila Montgomery',
+          appointmentTime: DateTime.now(),
+          consultationFee: 50.0
+        ),
         '/paymentConfirmation': (context) => PaymentSuccessScreen(),
         '/splash1': (context) => SplashScreen1(),
         '/splash2': (context) => SplashScreen2(),
         '/splash3': (context) => SplashScreen3(),
+      },
+    );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (snapshot.hasData && snapshot.data != null) {
+          return FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance
+                .collection('users')
+                .doc(snapshot.data!.uid)
+                .get(),
+            builder: (context, userSnapshot) {
+              if (userSnapshot.connectionState == ConnectionState.waiting) {
+                return Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+
+              if (userSnapshot.hasError) {
+                print('Error loading user data: ${userSnapshot.error}');
+                return LoginPage();
+              }
+
+              final userData = userSnapshot.data?.data() as Map<String, dynamic>?;
+              if (userData == null) {
+                return LoginPage();
+              }
+
+              // Normalize user type for comparison
+              final userType = userData['userType']?.toString().toLowerCase() ?? '';
+              print('User type: $userType'); // Debug log
+
+              Widget homePage;
+              if (userType == 'farmer') {
+                homePage = FarmerHomePage();
+              } else if (userType == 'veterinarian' || userType == 'vet') {
+                homePage = VetHomePage();
+              } else {
+                homePage = HomePage();
+              }
+
+              // Use Navigator to set the initial route
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => homePage),
+                );
+              });
+
+              return homePage;
+            },
+          );
+        }
+
+        return LoginPage();
       },
     );
   }

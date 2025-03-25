@@ -50,9 +50,7 @@ class _SplashScreen3State extends State<SplashScreen3> {
               ),
             ),
           ),
-          _TextContainer(),
-          _beginYourJourney(),
-          _threeDotsNavigation(),
+          _TextContainer(),                    
         ],
       ),
     );

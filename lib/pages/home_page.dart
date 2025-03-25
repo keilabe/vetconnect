@@ -4,6 +4,7 @@ import 'package:vetconnect/pages/farmer_appointment.dart';
 import 'package:vetconnect/pages/messages_page.dart';
 import 'package:vetconnect/pages/settings_page.dart';
 import 'package:vetconnect/pages/vet_profile.dart';
+import 'package:vetconnect/pages/vet_listing_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -60,8 +61,11 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.all(8.0),
             child: MaterialButton(
               onPressed: (){
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => VetProfile()),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => VetListingPage(),
+                  ),
                 );
               },
               color: Colors.teal,
