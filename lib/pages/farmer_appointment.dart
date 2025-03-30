@@ -6,6 +6,8 @@ import 'package:vetconnect/pages/messages_page.dart';
 import 'package:vetconnect/pages/settings_page.dart';
 
 class FarmerAppointment extends StatefulWidget{
+  const FarmerAppointment({super.key});
+
 
   @override
   State<StatefulWidget> createState() {

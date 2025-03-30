@@ -4,7 +4,10 @@ import 'package:vetconnect/pages/splash_screen3.dart';
 import 'package:flutter/gestures.dart';
 
 class SplashScreen2 extends StatefulWidget {
+  const SplashScreen2({super.key});
 
+
+  @override
   createState() {
     return _SplashScreen2State();
   }
@@ -37,7 +40,7 @@ class _SplashScreen2State extends State<SplashScreen2> {
   }
 
   Widget _textContainer() {
-    return Container(
+    return SizedBox(
       width: _deviceWidth! * 0.8,
       child: Column(
         children: [
@@ -88,7 +91,7 @@ class _SplashScreen2State extends State<SplashScreen2> {
           },
         ),
       },
-      child: Container(
+      child: SizedBox(
         width: 200,
         height: 40,
         child: Row(

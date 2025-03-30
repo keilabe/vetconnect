@@ -5,10 +5,10 @@ class VetBottomNavBar extends StatelessWidget {
   final Function(int) onTap;
 
   const VetBottomNavBar({
-    Key? key,
+    super.key,
     required this.currentIndex,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +26,10 @@ class VetBottomNavBar extends StatelessWidget {
         BottomNavigationBarItem(
           icon: Icon(Icons.calendar_today),
           label: 'Appointments',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.medical_services),
+          label: 'Services',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.message),

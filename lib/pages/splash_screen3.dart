@@ -4,6 +4,8 @@ import 'package:vetconnect/pages/splash_screen1.dart';
 import 'package:vetconnect/pages/splash_screen2.dart';
 
 class SplashScreen3 extends StatefulWidget {
+  const SplashScreen3({super.key});
+
 
   @override
   State<StatefulWidget> createState() {
@@ -120,7 +122,7 @@ class _SplashScreen3State extends State<SplashScreen3> {
           },
         ),
       },
-      child: Container(
+      child: SizedBox(
         width: 200,
         height: 40,
         child: Row(

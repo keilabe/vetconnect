@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'farmer_home_page.dart';
 import 'vet_home_page.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({Key? key}) : super(key: key);
+  const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -31,14 +33,18 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       setState(() => _isLoading = true);
-      print('🔐 Login attempt - Email: ${_emailController.text.trim()}, User Type: $_selectedUserType');
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+      
+      print('🔐 Login attempt - Email: $email, User Type: $_selectedUserType');
+      print('📝 Password length: ${password.length} characters');
 
       // Sign in with Firebase Auth
       print('📱 Attempting Firebase Authentication...');
       final UserCredential userCredential = await FirebaseAuth.instance
           .signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        email: email,
+        password: password,
       );
 
       final userId = userCredential.user?.uid;
@@ -48,14 +54,30 @@ class _LoginPageState extends State<LoginPage> {
 
       // First check the user's role in the users collection
       print('🔍 Checking user role in Firestore - Path: users/$userId');
-      final userDoc = await FirebaseFirestore.instance
+      var userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
           .get();
 
       print('📄 User document exists: ${userDoc.exists}');
       if (!userDoc.exists) {
-        throw Exception('User account not found. Please contact support.');
+        print('📝 Creating new user document in Firestore...');
+        // Create a new user document with default values
+        await FirebaseFirestore.instance.collection('users').doc(userId).set({
+          'email': email,
+          'userType': _selectedUserType,
+          'createdAt': FieldValue.serverTimestamp(),
+          'isActive': true,
+          'lastLogin': FieldValue.serverTimestamp(),
+          'uid': userId,
+        });
+        print('✅ User document created successfully');
+        
+        // Fetch the newly created document
+        userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .get();
       }
 
       final userData = userDoc.data() as Map<String, dynamic>;
@@ -101,6 +123,11 @@ class _LoginPageState extends State<LoginPage> {
       }
     } on FirebaseAuthException catch (e) {
       print('🚫 Firebase Auth Error - Code: ${e.code}, Message: ${e.message}');
+      print('🔍 Error Details:');
+      print('   - Email: ${_emailController.text.trim()}');
+      print('   - User Type: $_selectedUserType');
+      print('   - Stack Trace: ${e.stackTrace}');
+      
       String message = 'An error occurred during login';
       if (e.code == 'user-not-found') {
         message = 'No user found with this email';
@@ -108,10 +135,13 @@ class _LoginPageState extends State<LoginPage> {
         message = 'Wrong password provided';
       } else if (e.code == 'invalid-email') {
         message = 'Invalid email address';
+      } else if (e.code == 'invalid-credential') {
+        message = 'Invalid credentials. Please check your email and password.';
       }
       _showErrorDialog(message);
     } catch (e) {
       print('❌ General Error: ${e.toString()}');
+      print('🔍 Stack Trace: ${e is Error ? e.stackTrace : ''}');
       _showErrorDialog(e.toString());
     } finally {
       if (mounted) {
@@ -135,6 +165,123 @@ class _LoginPageState extends State<LoginPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _verifyUser(String email) async {
+    try {
+      print('🔍 Starting user verification for: $email');
+      print('📱 Current Platform: ${defaultTargetPlatform.toString()}');
+      
+      // Print current Firebase config
+      final FirebaseApp app = Firebase.app();
+      final options = app.options;
+      print('🔧 Firebase Configuration:');
+      print('   - Project ID: ${options.projectId}');
+      print('   - API Key: ${options.apiKey}');
+      print('   - Auth Domain: ${options.authDomain}');
+      
+      // Check Firebase Auth
+      print('📱 Checking Firebase Authentication...');
+      try {
+        final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+        print('📧 Sign-in methods available: ${methods.isEmpty ? "None" : methods.join(", ")}');
+        
+        if (methods.isEmpty) {
+          print('❌ No sign-in methods found for this email');
+          _showErrorDialog('No sign-in methods found for this email address');
+          return;
+        }
+        print('✅ User exists in Firebase Auth');
+        
+        // Try to sign in anonymously to verify Firebase connection
+        try {
+          final userCred = await FirebaseAuth.instance.signInAnonymously();
+          print('✅ Firebase Auth connection test successful');
+          await userCred.user?.delete();  // Clean up test user
+        } catch (e) {
+          print('❌ Firebase Auth connection test failed: $e');
+        }
+
+      } catch (authError) {
+        print('❌ Error checking authentication methods: $authError');
+        _showErrorDialog('Error checking authentication: $authError');
+        return;
+      }
+
+      // Check Firestore
+      print('📚 Checking Firestore...');
+      try {
+        final querySnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .where('email', isEqualTo: email)
+            .get();
+
+        print('📊 Firestore query completed. Documents found: ${querySnapshot.docs.length}');
+
+        if (querySnapshot.docs.isEmpty) {
+          print('❌ User not found in Firestore');
+          _showErrorDialog('User not found in Firestore database');
+          return;
+        }
+
+        final userData = querySnapshot.docs.first.data();
+        print('📋 User data found in Firestore:');
+        userData.forEach((key, value) {
+          print('   - $key: $value');
+        });
+
+        _showErrorDialog('User verified successfully!\nType: ${userData['userType']}');
+      } catch (firestoreError) {
+        print('❌ Error checking Firestore: $firestoreError');
+        _showErrorDialog('Error checking Firestore: $firestoreError');
+      }
+    } catch (e) {
+      print('❌ General error during verification: $e');
+      _showErrorDialog('Error during verification: $e');
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter your email address')),
+      );
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (!mounted) return;
+      
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Password Reset'),
+          content: Text('Password reset email sent to $email. Please check your inbox.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      print('Password Reset Error: ${e.code} - ${e.message}');
+      if (!mounted) return;
+      
+      String message = 'Failed to send password reset email';
+      if (e.code == 'user-not-found') {
+        message = 'No user found with this email address';
+      } else if (e.code == 'invalid-email') {
+        message = 'Invalid email address';
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
   }
 
   @override
@@ -373,15 +520,21 @@ class _LoginPageState extends State<LoginPage> {
                       SizedBox(height: 16),
                       // Forgot Password
                       TextButton(
-                        onPressed: () {
-                          // Implement forgot password
-                        },
+                        onPressed: _resetPassword,
                         child: Text(
                           'Forgot Password?',
                           style: TextStyle(color: Colors.grey),
                         ),
-                ),
-                SizedBox(height: 16),
+                      ),
+                      // Add Verify User button after the Forgot Password button
+                //       TextButton(
+                //         onPressed: () => _verifyUser(_emailController.text.trim()),
+                //         child: Text(
+                //           'Verify User',
+                //           style: TextStyle(color: Colors.blue),
+                //         ),
+                //       ),
+                // SizedBox(height: 16),
                       // Sign Up Link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

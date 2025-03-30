@@ -8,10 +8,10 @@ class ViewVetProfile extends StatelessWidget {
   final Map<String, dynamic> vetData;
 
   const ViewVetProfile({
-    Key? key,
+    super.key,
     required this.vetId,
     required this.vetData,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

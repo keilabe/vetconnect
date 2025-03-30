@@ -4,9 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../widgets/vet_bottom_nav_bar.dart';
+import '../pages/login_page.dart';
 
 class VetProfileSettingsPage extends StatefulWidget {
-  const VetProfileSettingsPage({Key? key}) : super(key: key);
+  const VetProfileSettingsPage({super.key});
 
   @override
   State<VetProfileSettingsPage> createState() => _VetProfileSettingsPageState();
@@ -17,13 +18,19 @@ class _VetProfileSettingsPageState extends State<VetProfileSettingsPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _specialtyController = TextEditingController();
   final _experienceController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
+  final _regionController = TextEditingController();
   String? _profileImageUrl;
   bool _isLoading = false;
-  int _selectedIndex = 3; // Profile tab
+  String? _selectedSpecialization;
+
+  final List<String> _specializations = [
+    'Small Animal Specialization',
+    'Large Animal Specialization',
+    'Indigenous Pet Specialization',
+    'Exotic Pet Specialization'
+  ];
 
   @override
   void initState() {
@@ -34,10 +41,9 @@ class _VetProfileSettingsPageState extends State<VetProfileSettingsPage> {
   @override
   void dispose() {
     _nameController.dispose();
-    _specialtyController.dispose();
     _experienceController.dispose();
     _phoneController.dispose();
-    _addressController.dispose();
+    _regionController.dispose();
     super.dispose();
   }
 
@@ -46,15 +52,15 @@ class _VetProfileSettingsPageState extends State<VetProfileSettingsPage> {
       final userId = _auth.currentUser?.uid;
       if (userId == null) return;
 
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      if (userDoc.exists) {
-        final data = userDoc.data() as Map<String, dynamic>;
+      final vetDoc = await _firestore.collection('veterinarians').doc(userId).get();
+      if (vetDoc.exists) {
+        final data = vetDoc.data() as Map<String, dynamic>;
         setState(() {
           _nameController.text = data['fullName'] ?? '';
-          _specialtyController.text = data['specialization'] ?? '';
+          _selectedSpecialization = data['specialization'] ?? _specializations[0];
           _experienceController.text = data['experience']?.toString() ?? '';
           _phoneController.text = data['phoneNumber'] ?? '';
-          _addressController.text = data['address'] ?? '';
+          _regionController.text = data['region'] ?? '';
           _profileImageUrl = data['profileImage'];
         });
       }
@@ -104,12 +110,12 @@ class _VetProfileSettingsPageState extends State<VetProfileSettingsPage> {
       final userId = _auth.currentUser?.uid;
       if (userId == null) return;
 
-      await _firestore.collection('users').doc(userId).update({
+      await _firestore.collection('veterinarians').doc(userId).update({
         'fullName': _nameController.text,
-        'specialization': _specialtyController.text,
+        'specialization': _selectedSpecialization,
         'experience': int.tryParse(_experienceController.text) ?? 0,
         'phoneNumber': _phoneController.text,
-        'address': _addressController.text,
+        'region': _regionController.text,
         'profileImage': _profileImageUrl,
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -134,6 +140,48 @@ class _VetProfileSettingsPageState extends State<VetProfileSettingsPage> {
       }
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    try {
+      // Close the dialog first
+      Navigator.pop(context);
+      
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // Sign out
+      await FirebaseAuth.instance.signOut();
+      
+      // Remove loading indicator
+      Navigator.pop(context);
+      
+      // Navigate to login page and clear the stack
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => LoginPage()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      print('Error logging out: $e');
+      // Remove loading indicator if it's showing
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to logout. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -192,15 +240,26 @@ class _VetProfileSettingsPageState extends State<VetProfileSettingsPage> {
                 },
               ),
               SizedBox(height: 16),
-              TextFormField(
-                controller: _specialtyController,
+              DropdownButtonFormField<String>(
+                value: _selectedSpecialization,
                 decoration: InputDecoration(
                   labelText: 'Specialization',
                   border: OutlineInputBorder(),
                 ),
+                items: _specializations.map((String specialization) {
+                  return DropdownMenuItem<String>(
+                    value: specialization,
+                    child: Text(specialization),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedSpecialization = newValue;
+                  });
+                },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter your specialization';
+                    return 'Please select your specialization';
                   }
                   return null;
                 },
@@ -240,15 +299,15 @@ class _VetProfileSettingsPageState extends State<VetProfileSettingsPage> {
               ),
               SizedBox(height: 16),
               TextFormField(
-                controller: _addressController,
+                controller: _regionController,
                 decoration: InputDecoration(
-                  labelText: 'Address',
+                  labelText: 'Region',
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter your address';
+                    return 'Please enter your region';
                   }
                   return null;
                 },
@@ -270,16 +329,50 @@ class _VetProfileSettingsPageState extends State<VetProfileSettingsPage> {
                         ),
                 ),
               ),
+              SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => AlertDialog(
+                        title: Text('Logout'),
+                        content: Text('Are you sure you want to logout?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => _handleLogout(context),
+                            child: Text(
+                              'Logout',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: Text(
+                    'Logout',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: VetBottomNavBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          // Handle navigation
-        },
-      ),
     );
   }
-} 
+}

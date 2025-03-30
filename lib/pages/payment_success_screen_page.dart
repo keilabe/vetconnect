@@ -1,6 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class PaymentSuccessScreen extends StatefulWidget {
+  final double amount;
+  final String vetName;
+  final DateTime appointmentTime;
+  final String transactionId;
+  final String paymentMethod;
+
+  const PaymentSuccessScreen({
+    super.key,
+    required this.amount,
+    required this.vetName,
+    required this.appointmentTime,
+    required this.transactionId,
+    required this.paymentMethod,
+  });
+
   @override
   _PaymentSuccessScreenState createState() => _PaymentSuccessScreenState();
 }
@@ -105,19 +121,21 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-          Text(
-            "Date & Time: 12th Nov, 3:00 PM",
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-          Text(
-                "Ksh 4000",
+              Text(
+                "Date & Time: ${DateFormat('d MMM, h:mm a').format(widget.appointmentTime)}",
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  fontFamily: 'Inter',
+                ),
+              ),
+              Text(
+                "Ksh ${widget.amount}",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.green,
                   fontSize: 16,
+                  fontFamily: 'Inter',
                 ),
               ),
             ],
@@ -126,7 +144,13 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Cow Specialist\nDr. Elara Voss"),
+              Text(
+                widget.vetName,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                ),
+              ),
               Text(
                 "Specialization\n Veterinarian",
                 style: TextStyle(
@@ -141,19 +165,21 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-          Text(
-            "Transaction ID: TXN123456789",
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-          Text(
-                "Mpesa",
+              Text(
+                "Transaction ID: ${widget.transactionId}",
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  fontFamily: 'Inter',
+                ),
+              ),
+              Text(
+                widget.paymentMethod,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.green,
                   fontSize: 16,
+                  fontFamily: 'Inter',
                 ),
               ),
             ],
@@ -162,24 +188,15 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Amount Paid: \$150"),
               Text(
-                "Payment Details",
+                "Amount Paid: Ksh ${widget.amount}",
                 style: TextStyle(
                   fontFamily: 'Inter',
-                  fontSize: 13,
-                  color: Color.fromRGBO(20, 46, 33, 0.62)
+                  fontSize: 14,
                 ),
               ),
-            ],
-          ),
-          SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-          Text("Farm Address: 123 Green Acres"),
-          Text(
-                "Details",
+              Text(
+                "Payment Details",
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 13,
@@ -199,15 +216,27 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
       children: [
         TextButton(
           onPressed: () {
-            // Navigate to home or appointment
+            Navigator.pushReplacementNamed(context, '/farmer-home');
           },
-          child: Text("Back to Home"),
+          child: Text(
+            "Back to Home",
+            style: TextStyle(
+              fontFamily: 'Inter',
+              color: Colors.teal,
+            ),
+          ),
         ),
         TextButton(
           onPressed: () {
-            // Chat with vet function
+            Navigator.pushNamed(context, '/chat');
           },
-          child: Text("Chat with Vet"),
+          child: Text(
+            "Chat with Vet",
+            style: TextStyle(
+              fontFamily: 'Inter',
+              color: Colors.teal,
+            ),
+          ),
         ),
       ],
     );
@@ -216,7 +245,7 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
   Widget _callVetButton() {
     return ElevatedButton(
       onPressed: () {
-        // Call vet function
+        // TODO: Implement call functionality
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.teal,
@@ -231,8 +260,10 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
           fontSize: 16,
           fontWeight: FontWeight.bold,
           color: Colors.white,
+          fontFamily: 'Inter',
         ),
       ),
     );
   }
 }
+

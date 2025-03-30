@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'vet_profile.dart';
 
 class VetListingPage extends StatefulWidget {
-  const VetListingPage({Key? key}) : super(key: key);
+  const VetListingPage({super.key});
 
   @override
   State<VetListingPage> createState() => _VetListingPageState();

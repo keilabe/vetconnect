@@ -35,7 +35,8 @@ class DefaultFirebaseOptions {
         );
       default:
         throw UnsupportedError(
-          'DefaultFirebaseOptions are not supported for this platform.',
+          'DefaultFirebaseOptions have not been configured for $defaultTargetPlatform - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
         );
     }
   }
@@ -64,6 +65,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '973000814272',
     projectId: 'vetconnect-d20f8',
     storageBucket: 'vetconnect-d20f8.firebasestorage.app',
+    androidClientId: '973000814272-ds5qpmi8us3031mnrmd6nhavrk8445tg.apps.googleusercontent.com',
+    iosClientId: '973000814272-ins8fut1j3u0jdpqelf5o2tl1q4g9uro.apps.googleusercontent.com',
     iosBundleId: 'com.example.vetconnect',
   );
 
@@ -73,6 +76,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '973000814272',
     projectId: 'vetconnect-d20f8',
     storageBucket: 'vetconnect-d20f8.firebasestorage.app',
+    androidClientId: '973000814272-ds5qpmi8us3031mnrmd6nhavrk8445tg.apps.googleusercontent.com',
+    iosClientId: '973000814272-ins8fut1j3u0jdpqelf5o2tl1q4g9uro.apps.googleusercontent.com',
     iosBundleId: 'com.example.vetconnect',
   );
 
@@ -85,4 +90,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'vetconnect-d20f8.firebasestorage.app',
     measurementId: 'G-2KSK4TB09V',
   );
+
 }

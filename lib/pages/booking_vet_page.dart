@@ -12,10 +12,10 @@ class BookingVetPage extends StatefulWidget {
   final Map<String, dynamic> vetData;
 
   const BookingVetPage({
-    Key? key,
+    super.key,
     required this.vetId,
     required this.vetData,
-  }) : super(key: key);
+  });
   
   @override
   State<BookingVetPage> createState() => _BookingVetPageState();
@@ -41,6 +41,8 @@ class _BookingVetPageState extends State<BookingVetPage> {
   String? _selectedAnimal;
   String? _selectedType;
   final TextEditingController _notesController = TextEditingController();
+  String _selectedGender = 'Male';
+  final List<String> _genderOptions = ['Male', 'Female'];
 
   final List<Map<String, dynamic>> _previousAppointments = [
   {
@@ -247,12 +249,26 @@ Widget _reservationForm() {
               onChanged: (value) => setState(() => _animalType = value),
             ),
             SizedBox(height: 10),
-            TextField(
+            DropdownButtonFormField<String>(
+              value: _selectedGender,
               decoration: InputDecoration(
                 labelText: 'Gender',
                 border: OutlineInputBorder(),
               ),
-              onChanged: (value) => setState(() => _gender = value),
+              items: _genderOptions.map((String gender) {
+                return DropdownMenuItem<String>(
+                  value: gender,
+                  child: Text(gender),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  setState(() {
+                    _selectedGender = newValue;
+                    _gender = newValue;
+                  });
+                }
+              },
             ),
             SizedBox(height: 10),
             TextField(
@@ -311,7 +327,7 @@ Widget _vetProfile() {
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
       Text(
-        'Dr. Lila Montgomery',
+        'Dr. ${widget.vetData['fullName'] ?? 'Unknown Vet'}',
         style: TextStyle(
           color: Colors.white,
           fontSize: 18,
@@ -320,14 +336,14 @@ Widget _vetProfile() {
       ),
       SizedBox(height: 4),
       Text(
-        'Specialist in Cow Health & Orthopedics',
+        widget.vetData['specialization'] ?? 'Veterinarian',
         style: TextStyle(
           color: Colors.white70,
           fontSize: 14,
         ),
       ),
       Text(
-        'Kiambu, KE • 10 years experience',
+        '${widget.vetData['region'] ?? 'Unknown Location'}',
         style: TextStyle(
           color: Colors.white70,
           fontSize: 14,
@@ -337,13 +353,20 @@ Widget _vetProfile() {
     );
   }
 
-   Widget _vetProfileIcon(){
-    return const Center(
-      child: CircleAvatar(
-          radius: 30,
-          backgroundImage: AssetImage('assets/images/vet1.png'),
-        ),
-    );    
+   Widget _vetProfileIcon() {
+    return CircleAvatar(
+      radius: 30,
+      backgroundImage: widget.vetData['profileImage'] != null
+          ? NetworkImage(widget.vetData['profileImage'])
+          : AssetImage('assets/images/vet1.png') as ImageProvider,
+      onBackgroundImageError: (exception, stackTrace) {
+        print('Error loading vet profile image: $exception');
+        // Fallback to default image if there's an error
+        setState(() {
+          widget.vetData['profileImage'] = null;
+        });
+      },
+    );
   }
 
   void _selectTime(BuildContext context) async {
@@ -453,41 +476,96 @@ Widget _vetProfile() {
   }  
   }
 
-  void _confirmAppointment() {
-  try {
-    // Attempt to parse the appointmentTime string
-    if (_selectedDate == null) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Error'),
-        content: Text('Please select a valid date and time'),
-      ),
-    );
-    return;
+  void _confirmAppointment() async {
+    try {
+      if (_selectedDate == null) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Error'),
+            content: Text('Please select a valid date and time'),
+          ),
+        );
+        return;
+      }
+
+      // Get current user
+      final user = _auth.currentUser;
+      if (user == null) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Error'),
+            content: Text('Please login to book an appointment'),
+          ),
+        );
+        return;
+      }
+
+      // Create appointment document with proper timestamp
+      final appointmentRef = await _firestore.collection('appointments').add({
+        'vetId': widget.vetId,
+        'farmerId': user.uid,
+        'appointmentTime': Timestamp.fromDate(_selectedDate!), // Convert DateTime to Timestamp
+        'status': 'pending',
+        'animalType': _animalType,
+        'gender': _gender,
+        'symptoms': _symptoms,
+        'location': _location,
+        'consultationType': _isInPerson ? 'in-person' : 'video',
+        'consultationFee': 50.0,
+        'createdAt': FieldValue.serverTimestamp(),
+        'vetName': 'Dr. ${widget.vetData['fullName'] ?? 'Unknown Vet'}',
+      });
+
+      // Create notification for vet
+      await _firestore.collection('notifications').add({
+        'userId': widget.vetId,
+        'type': 'appointment_request',
+        'appointmentId': appointmentRef.id,
+        'message': 'New appointment request from a farmer',
+        'read': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Create notification for farmer
+      await _firestore.collection('notifications').add({
+        'userId': user.uid,
+        'type': 'appointment_request_sent',
+        'appointmentId': appointmentRef.id,
+        'message': 'Your appointment request has been sent to Dr. ${widget.vetData['fullName'] ?? 'Unknown Vet'}',
+        'read': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Show success dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Appointment Request Sent'),
+          content: Text('Your appointment request has been sent to the veterinarian. You will be notified once they respond.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                Navigator.of(context).pop(); // Go back to previous screen
+              },
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      print("Error creating appointment: $e");
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Error'),
+          content: Text('Failed to create appointment. Please try again.'),
+        ),
+      );
+    }
   }
-    
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => ConfirmAndPayPage(
-          vetName: 'Dr. Lila Montgomery',
-          appointmentTime: _selectedDate!,
-          consultationFee: 50.0,
-        )
-      )
-    );
-  } catch (e) {
-    print("Error confirming appointment: $e");
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Error'),
-        content: Text('Please select a valid date and time'),
-      ),
-    );
-    // Handle the error appropriately, maybe show an error message to the user
-  }
-}
   
 Widget _previousAppointmentsSection() {
   return Padding(

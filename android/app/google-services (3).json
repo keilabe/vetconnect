@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "973000814272",
+    "project_id": "vetconnect-d20f8",
+    "storage_bucket": "vetconnect-d20f8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:973000814272:android:ae136dd9f71a865e118725",
+        "android_client_info": {
+          "package_name": "com.example.vetconnect"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "973000814272-ds5qpmi8us3031mnrmd6nhavrk8445tg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.vetconnect",
+            "certificate_hash": "42cbc4a6e58a4555ef6b9b88ea59366b61871e52"
+          }
+        },
+        {
+          "client_id": "973000814272-4e68jdsef3ma9olb7e6vae6qi6s2989t.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUS0XpaY13HdXqAw6m5Hpt4-lhwKPY_ac"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "973000814272-4e68jdsef3ma9olb7e6vae6qi6s2989t.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "973000814272-ins8fut1j3u0jdpqelf5o2tl1q4g9uro.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.vetconnect"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

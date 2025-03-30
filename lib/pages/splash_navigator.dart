@@ -6,7 +6,7 @@ import 'package:vetconnect/pages/splash_screen3.dart';
 import 'package:vetconnect/pages/login_page.dart';
 
 class SplashNavigator extends StatefulWidget {
-  const SplashNavigator({Key? key}) : super(key: key);
+  const SplashNavigator({super.key});
 
   @override
   State<SplashNavigator> createState() => _SplashNavigatorState();

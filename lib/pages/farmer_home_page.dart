@@ -9,7 +9,7 @@ import 'view_vet_profile.dart';
 import 'vet_search_results_page.dart';
 
 class FarmerHomePage extends StatefulWidget {
-  const FarmerHomePage({Key? key}) : super(key: key);
+  const FarmerHomePage({super.key});
 
   @override
   State<FarmerHomePage> createState() => _FarmerHomePageState();
@@ -82,7 +82,7 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
           .collection('users')
           .where('userType', isEqualTo: 'Veterinarian')
           .where('region', isGreaterThanOrEqualTo: region)
-          .where('region', isLessThan: region + 'z')
+          .where('region', isLessThan: '${region}z')
           .get();
 
       setState(() {
@@ -361,7 +361,7 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
                               ),
                             ),
                           );
-                        }).toList(),
+                        }),
                       ],
                     ),
                   ),

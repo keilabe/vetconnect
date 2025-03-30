@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../widgets/vet_bottom_nav_bar.dart';
 
 class VetServicesPage extends StatefulWidget {
-  const VetServicesPage({Key? key}) : super(key: key);
+  const VetServicesPage({super.key});
 
   @override
   State<VetServicesPage> createState() => _VetServicesPageState();
@@ -18,7 +17,6 @@ class _VetServicesPageState extends State<VetServicesPage> {
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
   bool _isLoading = false;
-  int _selectedIndex = 2; // Services tab
 
   @override
   void dispose() {
@@ -236,12 +234,6 @@ class _VetServicesPageState extends State<VetServicesPage> {
           ),
         ],
       ),
-      bottomNavigationBar: VetBottomNavBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          // Handle navigation
-        },
-      ),
     );
   }
-} 
+}

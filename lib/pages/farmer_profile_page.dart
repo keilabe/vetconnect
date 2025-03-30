@@ -6,7 +6,7 @@ import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class FarmerProfilePage extends StatefulWidget {
-  const FarmerProfilePage({Key? key}) : super(key: key);
+  const FarmerProfilePage({super.key});
 
   @override
   State<FarmerProfilePage> createState() => _FarmerProfilePageState();

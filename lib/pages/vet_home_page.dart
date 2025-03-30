@@ -5,9 +5,10 @@ import '../widgets/vet_bottom_nav_bar.dart';
 import 'vet_appointments_page.dart';
 import 'vet_messages_page.dart';
 import 'vet_profile_settings_page.dart';
+import 'vet_services_page.dart';
 
 class VetHomePage extends StatefulWidget {
-  const VetHomePage({Key? key}) : super(key: key);
+  const VetHomePage({super.key});
 
   @override
   State<VetHomePage> createState() => _VetHomePageState();
@@ -129,8 +130,9 @@ class _VetHomePageState extends State<VetHomePage> {
                       itemBuilder: (context, index) {
                         final appointment = appointments[index].data()
                             as Map<String, dynamic>;
-                        final dateTime = (appointment['dateTime'] as Timestamp)
-                            .toDate();
+                        final dateTime = appointment['dateTime'] != null
+                            ? (appointment['dateTime'] as Timestamp).toDate()
+                            : DateTime.now();
 
                         return Card(
                           margin: EdgeInsets.only(bottom: 8),
@@ -140,7 +142,7 @@ class _VetHomePageState extends State<VetHomePage> {
                             ),
                             title: Text('Appointment with Farmer'),
                             subtitle: Text(
-                              '${dateTime.hour}:${dateTime.minute} - ${appointment['type'] ?? 'Consultation'}',
+                              '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} - ${appointment['type'] ?? 'Consultation'}',
                             ),
                             trailing: Icon(Icons.arrow_forward_ios),
                             onTap: () {
@@ -173,10 +175,17 @@ class _VetHomePageState extends State<VetHomePage> {
                       },
                     ),
                     _buildQuickActionCard(
+                      icon: Icons.medical_services,
+                      title: 'Services',
+                      onTap: () {
+                        setState(() => _selectedIndex = 2);
+                      },
+                    ),
+                    _buildQuickActionCard(
                       icon: Icons.message,
                       title: 'Messages',
                       onTap: () {
-                        setState(() => _selectedIndex = 2);
+                        setState(() => _selectedIndex = 3);
                       },
                     ),
                   ],
@@ -186,6 +195,8 @@ class _VetHomePageState extends State<VetHomePage> {
           ),
           // Appointments Tab
           VetAppointmentsPage(),
+          // Services Tab
+          VetServicesPage(),
           // Messages Tab
           VetMessagesPage(),
           // Profile Tab

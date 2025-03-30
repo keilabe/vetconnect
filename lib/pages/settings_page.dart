@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:vetconnect/pages/home_page.dart';
 import 'package:vetconnect/pages/farmer_appointment.dart';
 import 'package:vetconnect/pages/messages_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:vetconnect/pages/login_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -11,9 +13,32 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  int _selectedIndex = 3; // Settings is 4th item (index 3)
+  final int _selectedIndex = 3; // Settings is 4th item (index 3)
   bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
+  final bool _darkModeEnabled = false;
+
+  Future<void> _handleLogout(BuildContext context) async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (context.mounted) {
+        // Navigate to login page and clear the stack
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => LoginPage()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      print('Error logging out: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to logout. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +210,29 @@ class _SettingsPageState extends State<SettingsPage> {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () {
-          // Implement logout
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Logout'),
+              content: Text('Are you sure you want to logout?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                    _handleLogout(context);
+                  },
+                  child: Text(
+                    'Logout',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ],
+            ),
+          );
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.red,

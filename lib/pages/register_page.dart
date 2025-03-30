@@ -6,6 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
+
   @override
   State<StatefulWidget> createState() {
     return _RegisterPageState();
@@ -33,16 +35,18 @@ class _RegisterPageState extends State<RegisterPage> {
   void initState() {
     super.initState();
     // Initialize focus nodes for each text field without custom key event handling
-    ['Full Name', 'Phone Number', 'Email', 'Password', 'Confirm Password'].forEach((field) {
+    for (var field in ['Full Name', 'Phone Number', 'Email', 'Password', 'Confirm Password']) {
       _focusNodes[field] = FocusNode();
-    });
+    }
   }
 
   @override
   void dispose() {
     _passwordController.dispose();
     // Dispose all focus nodes
-    _focusNodes.values.forEach((node) => node.dispose());
+    for (var node in _focusNodes.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -248,7 +252,7 @@ class _RegisterPageState extends State<RegisterPage> {
               },
             ),
             SizedBox(height: 20),
-            Container(
+            SizedBox(
               width: double.infinity,
               child: DropdownButtonFormField<String>(
                 decoration: InputDecoration(
@@ -367,7 +371,7 @@ class _RegisterPageState extends State<RegisterPage> {
     required String? Function(String?) validator,
     TextEditingController? controller,
   }) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: TextFormField(
         controller: controller,

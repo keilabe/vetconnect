@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class FarmerMessagesPage extends StatefulWidget {
-  const FarmerMessagesPage({Key? key}) : super(key: key);
+  const FarmerMessagesPage({super.key});
 
   @override
   State<FarmerMessagesPage> createState() => _FarmerMessagesPageState();

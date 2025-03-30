@@ -3,7 +3,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:uuid/uuid.dart';
 import 'package:js/js.dart' if (dart.library.html) 'dart:js_util';
-import 'package:_flutterfire_internals/_flutterfire_internals.dart';
 
 @JS()
 @staticInterop

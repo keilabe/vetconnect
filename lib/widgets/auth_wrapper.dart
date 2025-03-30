@@ -7,6 +7,8 @@ import 'package:vetconnect/pages/farmer_home_page.dart';
 import 'package:vetconnect/pages/vet_home_page.dart';
 
 class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(

@@ -6,9 +6,9 @@ class VetSearchResultsPage extends StatefulWidget {
   final String searchQuery;
 
   const VetSearchResultsPage({
-    Key? key,
+    super.key,
     required this.searchQuery,
-  }) : super(key: key);
+  });
 
   @override
   State<VetSearchResultsPage> createState() => _VetSearchResultsPageState();
@@ -42,7 +42,7 @@ class _VetSearchResultsPageState extends State<VetSearchResultsPage> {
       // Debug: Print all vets and their regions
       print('\nAll vets found:');
       for (var doc in querySnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         print('Vet: ${data['fullName']}');
         print('Region: ${data['region']}');
         print('Type: ${data['userType']}');
@@ -51,7 +51,7 @@ class _VetSearchResultsPageState extends State<VetSearchResultsPage> {
       
       // Filter vets by region in memory (case-insensitive)
       final filteredDocs = querySnapshot.docs.where((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         final region = data['region']?.toString().toLowerCase() ?? '';
         final searchQuery = widget.searchQuery.toLowerCase();
         print('Comparing region: "$region" with search: "$searchQuery"');
@@ -63,7 +63,7 @@ class _VetSearchResultsPageState extends State<VetSearchResultsPage> {
       // Debug: Print filtered vet data
       print('\nFiltered vet details:');
       for (var doc in filteredDocs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         print('Vet ID: ${doc.id}');
         print('Name: ${data['fullName']}');
         print('Region: ${data['region']}');

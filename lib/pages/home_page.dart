@@ -1,9 +1,7 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:vetconnect/pages/farmer_appointment.dart';
 import 'package:vetconnect/pages/messages_page.dart';
 import 'package:vetconnect/pages/settings_page.dart';
-import 'package:vetconnect/pages/vet_profile.dart';
 import 'package:vetconnect/pages/vet_listing_page.dart';
 
 class HomePage extends StatefulWidget {
