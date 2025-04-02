@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -29,12 +30,33 @@ void main() async {
  
   
   // Load environment variables
-  await dotenv.load(fileName: ".env");
+  try {
+   await dotenv.load(fileName: ".env");
+    
+    // Validate critical environment variables
+    _validateEnvironmentVariables([
+      'MPESA_CONSUMER_KEY',
+      'MPESA_CONSUMER_SECRET',
+      'FIREBASE_API_KEY',
+      'FIREBASE_APP_ID',
+      'FIREBASE_SENDER_ID',
+      'FIREBASE_PROJECT_ID',
+    ]);
+    
+    print('✅ Environment variables loaded successfully');
+  } catch (e) {
+    print('⚠️ Warning: Could not load .env file: $e');
+    print('⚠️ Using fallback values for environment variables');
+    // Set fallback values for critical environment variables
+    dotenv.env['MPESA_CONSUMER_KEY'] = 'fallback_key';
+    dotenv.env['MPESA_CONSUMER_SECRET'] = 'fallback_secret';
+  }
   
   // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
 
   // Initialize M-Pesa services
   try {
@@ -89,6 +111,17 @@ void main() async {
   
   runApp(MyApp());
 }
+
+void _validateEnvironmentVariables(List<String> requiredVars) {
+  final missingVars = requiredVars.where((varName) => 
+    dotenv.env[varName] == null || dotenv.env[varName]!.isEmpty
+  ).toList();
+
+  if (missingVars.isNotEmpty) {
+    throw Exception('Missing required environment variables: ${missingVars.join(', ')}');
+  }
+}
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
