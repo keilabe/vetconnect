@@ -18,7 +18,7 @@ class _VetAppointmentsPageState extends State<VetAppointmentsPage> with SingleTi
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final NotificationService _notificationService = NotificationService();
   String _selectedStatus = 'pending';
-  int _selectedIndex = 1; // Appointments tab
+  final int _selectedIndex = 1; // Appointments tab
   List<NotificationModel> _notifications = [];
   // Set to track already processed appointment IDs to prevent duplicate handling
   final Set<String> _processedAppointmentIds = {};
@@ -124,7 +124,7 @@ class _VetAppointmentsPageState extends State<VetAppointmentsPage> with SingleTi
                               ),
                               dense: true,
                             );
-                          }).toList(),
+                          }),
                         ],
                       ),
                     );
@@ -158,10 +158,10 @@ class _VetAppointmentsPageState extends State<VetAppointmentsPage> with SingleTi
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: [
-                  _buildAppointmentsList('pending'),
-                  _buildAppointmentsList('confirmed'),
-                  _buildAppointmentsList('completed'),
+          children: [
+            _buildAppointmentsList('pending'),
+            _buildAppointmentsList('confirmed'),
+            _buildAppointmentsList('completed'),
                   _buildAppointmentsList('rejected'),
                 ],
               ),
@@ -226,7 +226,7 @@ class _VetAppointmentsPageState extends State<VetAppointmentsPage> with SingleTi
         });
 
         // Log details of each appointment
-        appointments.forEach((doc) {
+        for (var doc in appointments) {
           final appointment = doc.data() as Map<String, dynamic>;
           print('''
 Appointment Details:
@@ -237,7 +237,7 @@ Animal Type: ${appointment['animalType']}
 Consultation Type: ${appointment['consultationType']}
 Farmer ID: ${appointment['farmerId']}
 ''');
-        });
+        }
 
         return ListView.builder(
           itemCount: appointments.length,
@@ -303,7 +303,7 @@ Farmer ID: ${appointment['farmerId']}
                         Icon(Icons.calendar_today, size: 16),
                         SizedBox(width: 8),
                         Text(
-                          '${dateTime?.day}/${dateTime?.month}/${dateTime?.year}',
+                          '${dateTime.day}/${dateTime.month}/${dateTime.year}',
                           style: TextStyle(fontFamily: 'Inter'),
                         ),
                       ],
@@ -314,7 +314,7 @@ Farmer ID: ${appointment['farmerId']}
                         Icon(Icons.access_time, size: 16),
                         SizedBox(width: 8),
                         Text(
-                          '${dateTime?.hour}:${dateTime?.minute}',
+                          '${dateTime.hour}:${dateTime.minute}',
                           style: TextStyle(fontFamily: 'Inter'),
                         ),
                       ],
@@ -451,9 +451,9 @@ Farmer ID: ${appointment['farmerId']}
         
         // Update appointment status
         transaction.update(appointmentDocRef, {
-          'status': 'confirmed',
-          'confirmedAt': FieldValue.serverTimestamp(),
-        });
+        'status': 'confirmed',
+        'confirmedAt': FieldValue.serverTimestamp(),
+      });
         
         // Create notification for farmer
         final notificationRef = _firestore.collection('notifications').doc();
@@ -482,11 +482,11 @@ Farmer ID: ${appointment['farmerId']}
           // This will trigger a rebuild of the UI
           _selectedStatus = 'confirmed';
           _tabController.animateTo(1); // Switch to Confirmed tab
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Appointment confirmed successfully')),
-        );
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Appointment confirmed successfully')),
+      );
       } else {
         print('Warning: Appointment status not updated to confirmed. Current status: ${updatedData['status']}');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -550,10 +550,10 @@ Farmer ID: ${appointment['farmerId']}
         
         // Update appointment status
         transaction.update(appointmentDocRef, {
-          'status': 'rejected',
-          'rejectedAt': FieldValue.serverTimestamp(),
-        });
-        
+        'status': 'rejected',
+        'rejectedAt': FieldValue.serverTimestamp(),
+      });
+
         // Create notification for farmer
         final notificationRef = _firestore.collection('notifications').doc();
         transaction.set(notificationRef, {
@@ -588,9 +588,9 @@ Farmer ID: ${appointment['farmerId']}
         );
       } else {
         print('Warning: Appointment status not updated to rejected. Current status: ${updatedData['status']}');
-        ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Appointment status may not have updated. Please refresh.')),
-        );
+      );
       }
     } catch (e) {
       // Close loading dialog

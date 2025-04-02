@@ -3,7 +3,6 @@ import 'package:vetconnect/services/user_service.dart';
 import 'package:vetconnect/pages/splash_screen1.dart';
 import 'package:vetconnect/pages/splash_screen2.dart';
 import 'package:vetconnect/pages/splash_screen3.dart';
-import 'package:vetconnect/pages/login_page.dart';
 
 class SplashNavigator extends StatefulWidget {
   const SplashNavigator({super.key});

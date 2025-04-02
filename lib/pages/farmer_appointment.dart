@@ -1,4 +1,3 @@
-import 'package:firebase_core_web/firebase_core_web_interop.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:vetconnect/pages/home_page.dart';

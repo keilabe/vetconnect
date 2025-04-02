@@ -341,7 +341,7 @@ class _FarmerAppointmentsPageState extends State<FarmerAppointmentsPage> {
                               side: BorderSide(color: Colors.grey[300]!, width: 1),
                             ),
                           );
-                        }).toList(),
+                        }),
                       ],
                     ),
                   );
@@ -417,7 +417,7 @@ class _FarmerAppointmentsPageState extends State<FarmerAppointmentsPage> {
                 });
 
                 // Log details of each appointment
-                appointments.forEach((doc) {
+                for (var doc in appointments) {
                   final appointment = doc.data() as Map<String, dynamic>;
                   print('''
 Appointment Details:
@@ -428,7 +428,7 @@ Animal Type: ${appointment['animalType']}
 Consultation Type: ${appointment['consultationType']}
 Vet ID: ${appointment['vetId']}
 ''');
-                });
+                }
 
                 return ListView.builder(
                   itemCount: appointments.length,

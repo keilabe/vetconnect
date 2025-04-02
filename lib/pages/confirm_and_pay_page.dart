@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:vetconnect/pages/payment_success_screen_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:mpesa_flutter_plugin/mpesa_flutter_plugin.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../services/mpesa_direct_service.dart';
+import 'package:logging/logging.dart';
 
 class ConfirmAndPayPage extends StatefulWidget {
   final String vetName;
@@ -15,6 +14,7 @@ class ConfirmAndPayPage extends StatefulWidget {
   final String consultationType;
   final String symptoms;
   final String? appointmentId; // Optional parameter for existing appointments
+
 
   const ConfirmAndPayPage({
     super.key, 
@@ -39,6 +39,17 @@ class _ConfirmAndPayPageState extends State<ConfirmAndPayPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isProcessing = false;
+  String? _phoneNumber;
+  final Logger _logger = Logger('ConfirmAndPayPage');
+  final MpesaDirectService _mpesaService = MpesaDirectService();
+  final TextEditingController _phoneController = TextEditingController();
+  String? _phoneError;
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
+  }
 
   Future<String> _getOrCreateAppointment() async {
     print('🔄 ConfirmAndPayPage: Getting or creating appointment');
@@ -135,286 +146,47 @@ class _ConfirmAndPayPageState extends State<ConfirmAndPayPage> {
   }
 
   // Format phone number for M-Pesa
-  String _formatPhoneNumber(String phoneNumber) {
-    print('🔄 ConfirmAndPayPage: Formatting phone number: $phoneNumber');
-    if (phoneNumber.isEmpty) {
-      print('⚠️ ConfirmAndPayPage: Empty phone number provided');
-      return '';
-    }
+  String _formatPhoneNumber(String phone) {
+    _logger.info('Formatting phone number: $phone');
     
     // Remove any non-digit characters
-    String digitsOnly = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
-    print('📋 ConfirmAndPayPage: Digits only: $digitsOnly');
-    
-    // Handle Kenyan phone numbers
-    if (digitsOnly.startsWith('254')) {
-      // Already in international format
-      print('✅ ConfirmAndPayPage: Phone already in international format: $digitsOnly');
-      return digitsOnly;
-    } else if (digitsOnly.startsWith('0')) {
-      // Convert local format (0XXX) to international format (254XXX)
-      String formatted = '254${digitsOnly.substring(1)}';
-      print('✅ ConfirmAndPayPage: Converted local to international format: $formatted');
-      return formatted;
-    } else if (digitsOnly.length >= 9 && digitsOnly.length <= 12) {
-      // Assume it's a phone number without country code
-      String formatted = '254$digitsOnly';
-      print('✅ ConfirmAndPayPage: Added country code to number: $formatted');
-      return formatted;
+    String digitsOnly = phone.replaceAll(RegExp(r'\D'), '');
+    _logger.info('Digits only: $digitsOnly');
+
+    // If the number starts with 0, replace it with 254
+    if (digitsOnly.startsWith('0')) {
+      digitsOnly = '254${digitsOnly.substring(1)}';
+      _logger.info('Converted to international format: $digitsOnly');
     }
-    
-    // Return original digits if we can't determine the format
-    print('⚠️ ConfirmAndPayPage: Could not determine format, returning original: $digitsOnly');
+    // If the number starts with +, remove it
+    else if (digitsOnly.startsWith('+')) {
+      digitsOnly = digitsOnly.substring(1);
+      _logger.info('Removed + prefix: $digitsOnly');
+    }
+    // If the number doesn't start with 254, add it
+    else if (!digitsOnly.startsWith('254')) {
+      digitsOnly = '254$digitsOnly';
+      _logger.info('Added country code: $digitsOnly');
+    }
+
+    _logger.info('Formatted phone number: $digitsOnly');
     return digitsOnly;
   }
 
-  Future<void> _handleMpesaPayment() async {
-    print('🔄 ConfirmAndPayPage: Starting M-Pesa payment process');
-    setState(() => _isProcessing = true);
-    try {
-      // Get or create the appointment
-      print('📝 ConfirmAndPayPage: Getting or creating appointment');
-      final appointmentId = await _getOrCreateAppointment();
-      print('✅ ConfirmAndPayPage: Got appointment ID: $appointmentId');
-      
-      // Get user's phone number from Firestore
-      print('🔍 ConfirmAndPayPage: Fetching user phone number from Firestore');
-      final userDoc = await _firestore
-          .collection('users')
-          .doc(_auth.currentUser?.uid)
-          .get();
-      final userData = userDoc.data() as Map<String, dynamic>;
-      final phoneNumber = userData['phoneNumber'] ?? '';
-      print('📋 ConfirmAndPayPage: Retrieved phone number: $phoneNumber');
-
-      if (phoneNumber.isEmpty) {
-        print('❌ ConfirmAndPayPage: Phone number not found');
-        throw Exception('Phone number not found. Please update your profile.');
-      }
-
-      // Format phone number for M-Pesa
-      print('🔄 ConfirmAndPayPage: Formatting phone number for M-Pesa');
-      final formattedPhone = _formatPhoneNumber(phoneNumber);
-      
-      if (formattedPhone.isEmpty || formattedPhone.length < 10) {
-        print('❌ ConfirmAndPayPage: Invalid phone number format: $formattedPhone');
-        throw Exception('Invalid phone number format. Please update your profile with a valid phone number.');
-      }
-      
-      print('✅ ConfirmAndPayPage: Using formatted phone number for M-Pesa: $formattedPhone');
-
-      // Get M-Pesa credentials from environment variables
-      print('🔍 ConfirmAndPayPage: Getting M-Pesa credentials from environment');
-      final businessShortCode = dotenv.env['MPESA_SHORTCODE'] ?? '174379';
-      final passKey = dotenv.env['MPESA_PASSKEY'] ?? 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919';
-      final callbackUrl = dotenv.env['MPESA_CALLBACK_URL'] ?? 'https://vetconnect.free.beeceptor.com/';
-      
-      print('📋 ConfirmAndPayPage: M-Pesa credentials - ShortCode: $businessShortCode, CallbackURL: $callbackUrl');
-      print('🔄 ConfirmAndPayPage: Initiating M-Pesa STK push');
-      
-      // Call the M-Pesa STK Push API
-      final startTime = DateTime.now();
-      print('⏱️ ConfirmAndPayPage: STK push started at: $startTime');
-      
-      dynamic response = await MpesaFlutterPlugin.initializeMpesaSTKPush(
-        businessShortCode: businessShortCode,
-        transactionType: TransactionType.CustomerPayBillOnline,
-        amount: widget.consultationFee,
-        partyA: formattedPhone,
-        partyB: businessShortCode,
-        callBackURL: Uri.parse(callbackUrl),
-        accountReference: "VetConnect-${DateTime.now().millisecondsSinceEpoch}",
-        phoneNumber: formattedPhone,
-        baseUri: Uri.parse("https://sandbox.safaricom.co.ke"),
-        transactionDesc: "Payment for veterinary consultation",
-        passKey: passKey,
-      );
-      
-      final endTime = DateTime.now();
-      print('⏱️ ConfirmAndPayPage: STK push completed at: $endTime, took ${endTime.difference(startTime).inMilliseconds}ms');
-      print('📋 ConfirmAndPayPage: M-Pesa STK push response: $response');
-
-      if (response == null) {
-        print('❌ ConfirmAndPayPage: Null response from M-Pesa');
-        throw Exception('Failed to get response from M-Pesa. Please try again.');
-      }
-      
-      if (response['ResponseCode'] == '0') {
-        print('✅ ConfirmAndPayPage: M-Pesa STK push successful, CheckoutRequestID: ${response['CheckoutRequestID']}');
-        
-        // Update appointment with checkout request ID
-        print('📝 ConfirmAndPayPage: Updating appointment with checkout request ID');
-        await _firestore.collection('appointments').doc(appointmentId).update({
-          'mpesaCheckoutRequestId': response['CheckoutRequestID'],
-          'paymentStatus': 'pending',
-        });
-        print('✅ ConfirmAndPayPage: Appointment updated with checkout request ID');
-
-        // Show success dialog with more detailed instructions
-        print('📱 ConfirmAndPayPage: Showing payment instructions dialog');
-        if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => AlertDialog(
-              title: Text('M-Pesa Payment Initiated'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Please check your phone for the M-Pesa payment prompt.'),
-                  SizedBox(height: 8),
-                  Text('1. Enter your M-Pesa PIN when prompted'),
-                  Text('2. Wait for confirmation SMS from M-Pesa'),
-                  Text('3. Click "I have completed the payment" below'),
-                  SizedBox(height: 12),
-                  Text('Amount: KES ${widget.consultationFee}', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('Phone: $formattedPhone', style: TextStyle(fontWeight: FontWeight.bold)),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () async {
-                    print('👆 ConfirmAndPayPage: User confirmed payment completion');
-                    Navigator.pop(context); // Close dialog
-                    
-                    // Show loading indicator
-                    print('📱 ConfirmAndPayPage: Showing payment verification dialog');
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (context) => AlertDialog(
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
-                            Text('Verifying payment...'),
-                          ],
-                        ),
-                      ),
-                    );
-                    
-                    try {
-                      print('🔄 ConfirmAndPayPage: Verifying payment status');
-                      // For demo purposes, we'll assume the payment was successful
-                      // In a real app, you would check the transaction status using a callback
-                      // or by querying the M-Pesa API
-                      
-                      // Simulate checking transaction status
-                      print('⏱️ ConfirmAndPayPage: Simulating payment verification delay');
-                      final verifyStartTime = DateTime.now();
-                      await Future.delayed(Duration(seconds: 3));
-                      final verifyEndTime = DateTime.now();
-                      print('⏱️ ConfirmAndPayPage: Payment verification took ${verifyEndTime.difference(verifyStartTime).inMilliseconds}ms');
-                      
-                      // Assume success for demo
-                      final statusResponse = {
-                        'ResponseCode': '0', 
-                        'TransactionID': 'MPESA${DateTime.now().millisecondsSinceEpoch}'
-                      };
-                      print('📋 ConfirmAndPayPage: Payment verification response: $statusResponse');
-                      
-                      // Close the loading dialog
-                      print('📱 ConfirmAndPayPage: Closing verification dialog');
-                      Navigator.pop(context);
-                    
-                      if (statusResponse['ResponseCode'] == '0') {
-                        print('✅ ConfirmAndPayPage: Payment verification successful, TransactionID: ${statusResponse['TransactionID']}');
-                        
-                        // Update appointment status
-                        print('📝 ConfirmAndPayPage: Updating appointment payment status to completed');
-                        await _firestore.collection('appointments').doc(appointmentId).update({
-                          'paymentStatus': 'completed',
-                          'mpesaTransactionId': statusResponse['TransactionID'],
-                        });
-                        print('✅ ConfirmAndPayPage: Appointment payment status updated to completed');
-
-                        // Navigate to success screen
-                        print('🔄 ConfirmAndPayPage: Navigating to payment success screen');
-                        Navigator.pushReplacementNamed(
-                          context,
-                          '/payment-success',
-                          arguments: {
-                            'amount': widget.consultationFee,
-                            'vetName': widget.vetName,
-                            'appointmentTime': widget.appointmentTime,
-                            'transactionId': statusResponse['TransactionID'],
-                            'paymentMethod': 'Mpesa',
-                          },
-                        );
-                        print('✅ ConfirmAndPayPage: Navigation to success screen complete');
-                      } else {
-                        print('❌ ConfirmAndPayPage: Payment verification failed: ${statusResponse['ResponseDescription'] ?? 'Unknown error'}');
-                        throw Exception('Payment verification failed: ${statusResponse['ResponseDescription'] ?? 'Unknown error'}');
-                      }
-                    } catch (e) {
-                      print('❌ ConfirmAndPayPage: Error during payment verification: $e');
-                      // Close the loading dialog if it's open
-                      if (Navigator.canPop(context)) {
-                        print('📱 ConfirmAndPayPage: Closing verification dialog due to error');
-                        Navigator.pop(context);
-                      }
-                      
-                      // Show error dialog
-                      print('📱 ConfirmAndPayPage: Showing payment verification error dialog');
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text('Payment Verification Failed'),
-                          content: Text('We could not verify your payment: ${e.toString()}'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: Text('OK'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                  },
-                  child: Text('I have completed the payment'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    print('👆 ConfirmAndPayPage: User cancelled payment');
-                    Navigator.pop(context); // Close dialog
-                    Navigator.pop(context); // Go back to previous screen
-                  },
-                  child: Text('Cancel'),
-                ),
-              ],
-            ),
-          );
-        }
-      } else {
-        print('❌ ConfirmAndPayPage: M-Pesa STK push failed: ${response['ResponseDescription']}');
-        throw Exception('Failed to initiate payment: ${response['ResponseDescription']}');
-      }
-    } catch (error) {
-      print('❌ ConfirmAndPayPage: Error processing M-Pesa payment: $error');
-      print('📋 ConfirmAndPayPage: Error details - ${error.toString()}');
-      if (mounted) {
-        print('📱 ConfirmAndPayPage: Showing payment error dialog');
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Payment Error'),
-            content: Text('Failed to process payment: $error'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('OK'),
-              ),
-            ],
-          ),
-        );
-      }
-    } finally {
-      print('🔄 ConfirmAndPayPage: Resetting processing state');
-      setState(() => _isProcessing = false);
-      print('✅ ConfirmAndPayPage: M-Pesa payment process completed');
+  bool _validatePhoneNumber(String phone) {
+    if (phone.isEmpty) {
+      setState(() => _phoneError = 'Phone number is required');
+      return false;
     }
+
+    final formattedPhone = _formatPhoneNumber(phone);
+    if (!RegExp(r'^254[17]\d{8}$').hasMatch(formattedPhone)) {
+      setState(() => _phoneError = 'Please enter a valid Safaricom number');
+      return false;
+    }
+
+    setState(() => _phoneError = null);
+    return true;
   }
 
   Future<void> _handleOtherPaymentMethods() async {
@@ -542,6 +314,157 @@ class _ConfirmAndPayPageState extends State<ConfirmAndPayPage> {
             _buildConfirmButton(),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _handleMpesaPayment() async {
+    print('🔄 ConfirmAndPayPage: Starting M-Pesa payment process');
+    setState(() => _isProcessing = true);
+    
+    try {
+      // Get or create the appointment first
+      print('📝 ConfirmAndPayPage: Getting or creating appointment');
+      final appointmentId = await _getOrCreateAppointment();
+      print('✅ ConfirmAndPayPage: Got appointment ID: $appointmentId');
+
+      // Show phone number input dialog
+      print('📱 ConfirmAndPayPage: Showing phone number input dialog');
+      final phoneNumber = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: Text('Enter M-Pesa Phone Number'),
+          content: TextField(
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              hintText: 'e.g., 254712345678',
+              prefixText: '+',
+            ),
+            onChanged: (value) => _phoneNumber = value,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                print('❌ ConfirmAndPayPage: User cancelled phone number input');
+                Navigator.pop(context, null);
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                print('✅ ConfirmAndPayPage: User entered phone number: $_phoneNumber');
+                Navigator.pop(context, _phoneNumber);
+              },
+              child: Text('Continue'),
+            ),
+          ],
+        ),
+      );
+
+      if (phoneNumber == null || phoneNumber.isEmpty) {
+        print('❌ ConfirmAndPayPage: No phone number provided');
+        setState(() => _isProcessing = false);
+        return;
+      }
+
+      // Format phone number
+      final formattedPhone = _formatPhoneNumber(phoneNumber);
+      print('📱 ConfirmAndPayPage: Formatted phone number: $formattedPhone');
+
+      // Show processing dialog
+      print('⏳ ConfirmAndPayPage: Showing processing dialog');
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Processing payment...\nPlease check your phone for the M-Pesa prompt.'),
+            ],
+          ),
+        ),
+      );
+
+      // Initiate STK Push
+      print('📤 ConfirmAndPayPage: Initiating STK Push');
+      final result = await _mpesaService.initiateSTKPush(
+        phoneNumber: formattedPhone,
+        amount: widget.consultationFee,
+        reference: appointmentId,
+        description: 'Payment for veterinary consultation with ${widget.vetName}',
+      );
+
+      // Close processing dialog
+      print('✅ ConfirmAndPayPage: Closing processing dialog');
+      Navigator.pop(context);
+
+      if (result['ResponseCode'] == '0') {
+        print('✅ ConfirmAndPayPage: STK Push initiated successfully');
+        
+        // Update appointment with payment details
+        print('📝 ConfirmAndPayPage: Updating appointment with payment details');
+        await _firestore.collection('appointments').doc(appointmentId).update({
+          'paymentStatus': 'pending',
+          'paymentMethod': 'mpesa',
+          'mpesaCheckoutRequestId': result['checkoutRequestId'],
+          'mpesaMerchantRequestId': result['merchantRequestId'],
+        });
+
+        // Show success dialog
+        print('🎉 ConfirmAndPayPage: Showing success dialog');
+        _showSuccessDialog();
+      } else {
+        print('❌ ConfirmAndPayPage: STK Push failed: ${result['ResponseDescription']}');
+        _showErrorDialog('Payment failed: ${result['ResponseDescription']}');
+      }
+    } catch (e) {
+      print('❌ ConfirmAndPayPage: Error processing M-Pesa payment: $e');
+      setState(() => _isProcessing = false);
+      
+      // Show error dialog
+      print('⚠️ ConfirmAndPayPage: Showing error dialog');
+      _showErrorDialog('An error occurred while processing your payment.');
+    }
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Payment Initiated'),
+        content: const Text(
+          'Please check your phone for the M-Pesa prompt and enter your PIN to complete the payment.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pop(true); // Return to previous screen
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Payment Failed'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
   }

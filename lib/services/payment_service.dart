@@ -1,11 +1,13 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:logging/logging.dart';
 
 class PaymentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isInitialized = false;
+  static final Logger _logger = Logger('PaymentService');
+
 
   Future<void> initialize() async {
     print('🔧 PaymentService: Initializing payment service');
@@ -13,6 +15,7 @@ class PaymentService {
     // This would typically involve setting up API keys, endpoints, etc.
     _isInitialized = true;
     print('✅ PaymentService: Payment service initialized successfully');
+    _logger.info('Payment service initialized successfully');
   }
 
   Future<bool> processPayment({
@@ -20,25 +23,24 @@ class PaymentService {
     required double amount,
     required String paymentMethod,
   }) async {
-    print('🔄 PaymentService: Starting payment process');
-    print('📋 PaymentService: Payment details - AppointmentID: $appointmentId, Amount: $amount, Method: $paymentMethod');
-    
+    _logger.fine('Starting payment process for appointment: $appointmentId');
+
     try {
       if (!_isInitialized) {
-        print('⚠️ PaymentService: Service not initialized, initializing now');
+        _logger.warning('Payment service not initialized, initializing now');
         await initialize();
       }
 
       // Get the current user
       final user = _auth.currentUser;
       if (user == null) {
-        print('❌ PaymentService: User not logged in');
+        _logger.severe('User not logged in');
         throw Exception('User not logged in');
       }
-      print('👤 PaymentService: User authenticated - UserID: ${user.uid}');
+      _logger.info('User authenticated - UserID: ${user.uid}');
 
       // Create payment record
-      print('📝 PaymentService: Creating payment record in Firestore');
+      _logger.fine('Creating payment record in Firestore');
       final paymentRef = await _firestore.collection('payments').add({
         'appointmentId': appointmentId,
         'userId': user.uid,
@@ -47,45 +49,40 @@ class PaymentService {
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
       });
-      print('✅ PaymentService: Payment record created - PaymentID: ${paymentRef.id}');
+      _logger.info('Payment record created - PaymentID: ${paymentRef.id}');
 
       // Update appointment with payment reference
-      print('📝 PaymentService: Updating appointment with payment reference');
+      _logger.fine('Updating appointment with payment reference');
       await _firestore.collection('appointments').doc(appointmentId).update({
         'paymentId': paymentRef.id,
         'paymentStatus': 'pending',
       });
-      print('✅ PaymentService: Appointment updated with payment reference');
+      _logger.info('Appointment updated with payment reference');
 
-      // Here you would integrate with actual Mpesa API
-      // For now, we'll simulate a successful payment
-      print('🔄 PaymentService: Processing payment with Mpesa (simulated)');
-      final startTime = DateTime.now();
+      // Simulate Mpesa payment process
+      _logger.fine('Simulating Mpesa payment process');
       await Future.delayed(Duration(seconds: 2));
-      final endTime = DateTime.now();
-      print('⏱️ PaymentService: Payment processing took ${endTime.difference(startTime).inMilliseconds}ms');
+      _logger.info('Mpesa payment simulation completed');
 
       // Update payment status
-      print('📝 PaymentService: Updating payment status to completed');
+      _logger.fine('Updating payment status to completed');
       await paymentRef.update({
         'status': 'completed',
         'completedAt': FieldValue.serverTimestamp(),
       });
-      print('✅ PaymentService: Payment status updated to completed');
+      _logger.info('Payment status updated to completed');
 
       // Update appointment status
-      print('📝 PaymentService: Updating appointment payment status to completed');
+      _logger.fine('Updating appointment payment status to completed');
       await _firestore.collection('appointments').doc(appointmentId).update({
         'paymentStatus': 'completed',
       });
-      print('✅ PaymentService: Appointment payment status updated to completed');
+      _logger.info('Appointment payment status updated to completed');
 
-      print('🎉 PaymentService: Payment process completed successfully');
+      _logger.info('Payment process completed successfully');
       return true;
-    } catch (e) {
-      print('❌ PaymentService: Error processing payment: $e');
-      print('📋 PaymentService: Error details - ${e.toString()}');
-      print('🔍 PaymentService: Error occurred during payment processing for appointment: $appointmentId');
+    } on Exception catch (e) {
+      _logger.severe('Error processing payment: $e', e);
       rethrow;
     }
   }

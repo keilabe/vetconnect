@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import '../widgets/vet_bottom_nav_bar.dart';
 import '../pages/login_page.dart';
 
 class VetProfileSettingsPage extends StatefulWidget {

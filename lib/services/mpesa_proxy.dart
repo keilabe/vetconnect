@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MpesaProxy {
   static const String _proxyUrl = 'https://vetconnect.free.beeceptor.com'; // Your backend server URL

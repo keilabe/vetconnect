@@ -17,21 +17,35 @@ class _VetMessagesPageState extends State<VetMessagesPage> {
   String? _selectedFarmerName;
 
   @override
+  void initState() {
+    super.initState();
+    print('🔄 VetMessagesPage: Initializing messages page');
+    print('👤 VetMessagesPage: Current user ID: ${_auth.currentUser?.uid}');
+  }
+
+  @override
   void dispose() {
+    print('🔄 VetMessagesPage: Disposing messages page');
     _messageController.dispose();
     super.dispose();
   }
 
   Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty || _selectedChatId == null) return;
+    if (_messageController.text.trim().isEmpty || _selectedChatId == null) {
+      print('⚠️ VetMessagesPage: Cannot send empty message or no chat selected');
+      return;
+    }
 
+    print('📤 VetMessagesPage: Preparing to send message to chat $_selectedChatId');
     try {
       final message = {
         'text': _messageController.text.trim(),
         'senderId': _auth.currentUser?.uid,
         'timestamp': FieldValue.serverTimestamp(),
       };
+      print('📝 VetMessagesPage: Message content: ${message['text']}');
 
+      print('🔄 VetMessagesPage: Adding message to Firestore');
       await _firestore
           .collection('chats')
           .doc(_selectedChatId)
@@ -39,14 +53,16 @@ class _VetMessagesPageState extends State<VetMessagesPage> {
           .add(message);
 
       // Update last message in chat document
+      print('🔄 VetMessagesPage: Updating last message in chat document');
       await _firestore.collection('chats').doc(_selectedChatId).update({
         'lastMessage': message['text'],
         'lastMessageTime': message['timestamp'],
       });
 
+      print('✅ VetMessagesPage: Message sent successfully');
       _messageController.clear();
     } catch (e) {
-      print('Error sending message: $e');
+      print('❌ VetMessagesPage: Error sending message: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to send message')),
       );
@@ -74,14 +90,17 @@ class _VetMessagesPageState extends State<VetMessagesPage> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
+                  print('❌ VetMessagesPage: Error loading chats: ${snapshot.error}');
                   return Center(child: Text('Error loading chats'));
                 }
 
                 if (snapshot.connectionState == ConnectionState.waiting) {
+                  print('⏳ VetMessagesPage: Loading chats...');
                   return Center(child: CircularProgressIndicator());
                 }
 
                 final chats = snapshot.data?.docs ?? [];
+                print('📋 VetMessagesPage: Loaded ${chats.length} chats');
 
                 return ListView.builder(
                   itemCount: chats.length,
@@ -98,9 +117,21 @@ class _VetMessagesPageState extends State<VetMessagesPage> {
                           .doc(otherUserId)
                           .get(),
                       builder: (context, farmerSnapshot) {
+                        if (farmerSnapshot.hasError) {
+                          print('❌ VetMessagesPage: Error loading farmer data: ${farmerSnapshot.error}');
+                        }
+                        
+                        if (farmerSnapshot.connectionState == ConnectionState.waiting) {
+                          print('⏳ VetMessagesPage: Loading farmer data...');
+                        }
+                        
                         final farmerData = farmerSnapshot.data?.data()
                             as Map<String, dynamic>?;
                         final farmerName = farmerData?['name'] ?? 'Unknown Farmer';
+                        
+                        if (farmerData != null) {
+                          print('👨‍🌾 VetMessagesPage: Loaded farmer data for: $farmerName');
+                        }
 
                         return ListTile(
                           selected: _selectedChatId == chats[index].id,
@@ -114,11 +145,12 @@ class _VetMessagesPageState extends State<VetMessagesPage> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           onTap: () {
-            setState(() {
+                            print('👆 VetMessagesPage: Selected chat with ${chats[index].id} (Farmer: $farmerName)');
+                            setState(() {
                               _selectedChatId = chats[index].id;
                               _selectedFarmerName = farmerName;
-            });
-          },
+                            });
+                          },
                         );
                       },
                     );
@@ -170,15 +202,17 @@ class _VetMessagesPageState extends State<VetMessagesPage> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
+                  print('❌ VetMessagesPage: Error loading messages: ${snapshot.error}');
                   return Center(child: Text('Error loading messages'));
                 }
 
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  print('⏳ VetMessagesPage: Loading messages for chat $_selectedChatId...');
                   return Center(child: CircularProgressIndicator());
                 }
 
                 final messages = snapshot.data?.docs ?? [];
+                print('💬 VetMessagesPage: Loaded ${messages.length} messages for chat $_selectedChatId');
 
                 return ListView.builder(
                   reverse: true,

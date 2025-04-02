@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:vetconnect/pages/confirm_and_pay_page.dart';
 
 class VetAppointmentRequestsPage extends StatefulWidget {
+  const VetAppointmentRequestsPage({super.key});
+
   @override
   _VetAppointmentRequestsPageState createState() => _VetAppointmentRequestsPageState();
 }

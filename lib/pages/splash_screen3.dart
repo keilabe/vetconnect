@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:vetconnect/pages/splash_screen1.dart';
-import 'package:vetconnect/pages/splash_screen2.dart';
 
 class SplashScreen3 extends StatefulWidget {
   const SplashScreen3({super.key});

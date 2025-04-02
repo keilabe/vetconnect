@@ -1,10 +1,7 @@
 import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:convert/convert.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter/foundation.dart';
 import 'mpesa_proxy.dart';
 
 class MpesaService {

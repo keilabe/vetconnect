@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:vetconnect/pages/splash_screen2.dart';
-import 'package:vetconnect/pages/splash_screen3.dart';
 import 'package:flutter/gestures.dart';
 
 class SplashScreen1 extends StatefulWidget {

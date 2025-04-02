@@ -7,6 +7,8 @@ import 'farmer_messages_page.dart';
 import 'farmer_profile_page.dart';
 import 'view_vet_profile.dart';
 import 'vet_search_results_page.dart';
+import 'login_page.dart';
+import 'chat_list_page.dart';
 
 class FarmerHomePage extends StatefulWidget {
   const FarmerHomePage({super.key});
@@ -153,6 +155,23 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('VetConnect'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                );
+              }
+            },
+          ),
+        ],
+      ),
       body: IndexedStack(
         index: _selectedIndex,
         children: [
@@ -704,6 +723,15 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
         onTap: (index) {
           setState(() => _selectedIndex = index);
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ChatListPage()),
+          );
+        },
+        child: const Icon(Icons.chat),
       ),
     );
   }

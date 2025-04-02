@@ -6,6 +6,8 @@ import 'vet_appointments_page.dart';
 import 'vet_messages_page.dart';
 import 'vet_profile_settings_page.dart';
 import 'vet_services_page.dart';
+import 'login_page.dart';
+import 'chat_list_page.dart';
 
 class VetHomePage extends StatefulWidget {
   const VetHomePage({super.key});
@@ -76,6 +78,18 @@ class _VetHomePageState extends State<VetHomePage> {
             icon: Icon(Icons.notifications),
             onPressed: () {
               // TODO: Implement notifications
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                );
+              }
             },
           ),
         ],
@@ -208,6 +222,15 @@ class _VetHomePageState extends State<VetHomePage> {
         onTap: (index) {
           setState(() => _selectedIndex = index);
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ChatListPage()),
+          );
+        },
+        child: const Icon(Icons.chat),
       ),
     );
   }
